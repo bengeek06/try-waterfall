@@ -1,0 +1,12 @@
+[submodule "web"]
+	path = web
+	url = https://github.com/bengeek06/web-waterfall.git
+[submodule "services/auth_service"]
+	path = services/auth_service
+	url = https://github.com/bengeek06/auth-api-waterfall.git
+[submodule "services/identity_service"]
+	path = services/identity_service
+	url = https://github.com/bengeek06/identity-api-waterfall.git
+[submodule "services/guardian_service"]
+	path = services/guardian_service
+	url = https://github.com/bengeek06/guardian-api-waterfall.git

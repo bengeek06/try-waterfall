@@ -1,12 +1,16 @@
 [submodule "web"]
-	path = web
-	url = https://github.com/bengeek06/web-waterfall.git
+path = web
+url = https://github.com/bengeek06/web-waterfall.git
+branch = web_staging
 [submodule "services/auth_service"]
-	path = services/auth_service
-	url = https://github.com/bengeek06/auth-api-waterfall.git
+path = services/auth_service
+url = https://github.com/bengeek06/auth-api-waterfall.git
+branch = main
 [submodule "services/identity_service"]
-	path = services/identity_service
-	url = https://github.com/bengeek06/identity-api-waterfall.git
+path = services/identity_service
+url = https://github.com/bengeek06/identity-api-waterfall.git
+branch = main
 [submodule "services/guardian_service"]
-	path = services/guardian_service
-	url = https://github.com/bengeek06/guardian-api-waterfall.git
+path = services/guardian_service
+url = https://github.com/bengeek06/guardian-api-waterfall.git
+branch = main

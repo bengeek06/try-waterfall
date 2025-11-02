@@ -1,0 +1,158 @@
+# ==============================================================================
+# Try Waterfall - Docker Compose Configuration
+# ==============================================================================
+# 
+# Usage:
+#   docker compose up                                    # Base installation
+#   docker compose --profile cache up                    # Avec Redis
+#   docker compose --profile storage up                  # Avec MinIO
+#   docker compose --profile cache --profile storage up  # Complet
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # PostgreSQL Database (Core - toujours actif)
+  # ===========================================================================
+  postgres:
+    image: postgres:17-alpine
+    container_name: waterfall-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-waterfall}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./config/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U waterfall"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - waterfall
+
+  # ===========================================================================
+  # Waterfall Application (Core - toujours actif)
+  # ===========================================================================
+  waterfall:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: try-waterfall:latest
+    container_name: waterfall-app
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      # Database connections
+      DATABASE_URL_AUTH: postgresql://${POSTGRES_USER:-waterfall}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waterfall_auth
+      DATABASE_URL_IDENTITY: postgresql://${POSTGRES_USER:-waterfall}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waterfall_identity
+      DATABASE_URL_GUARDIAN: postgresql://${POSTGRES_USER:-waterfall}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waterfall_guardian
+      
+      # Service URLs (internal)
+      AUTH_SERVICE_URL: http://localhost:5001
+      IDENTITY_SERVICE_URL: http://localhost:5002
+      GUARDIAN_SERVICE_URL: http://localhost:5003
+      
+      # Configuration
+      FLASK_ENV: ${FLASK_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      NODE_ENV: production
+      
+      # Redis (si profil cache activé)
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      
+      # MinIO (si profil storage activé)
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      
+      # Secrets (générés automatiquement si non définis)
+      JWT_SECRET: ${JWT_SECRET:-}
+      INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN:-}
+    volumes:
+      - waterfall_logs:/app/logs
+      - waterfall_secrets:/app/secrets
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - waterfall
+
+  # ===========================================================================
+  # Redis Cache (Profil: cache)
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: waterfall-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - waterfall
+    profiles:
+      - cache
+
+  # ===========================================================================
+  # MinIO Object Storage (Profil: storage)
+  # ===========================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: waterfall-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - waterfall
+    profiles:
+      - storage
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    name: waterfall_postgres_data
+  waterfall_logs:
+    name: waterfall_logs
+  waterfall_secrets:
+    name: waterfall_secrets
+  redis_data:
+    name: waterfall_redis_data
+  minio_data:
+    name: waterfall_minio_data
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  waterfall:
+    name: waterfall_network
+    driver: bridge

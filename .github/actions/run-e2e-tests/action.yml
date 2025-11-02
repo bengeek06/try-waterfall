@@ -50,7 +50,8 @@ runs:
       run: |
         echo "⚙️ Configuring test environment..."
         
-        # Create .env.test file with proper configuration
+        # Create .env.test file with proper configuration in e2e-tests directory
+        cd e2e-tests
         cat > .env.test << EOF
         WEB_URL=https://localhost
         COMPANY_NAME=E2ETestCompany
@@ -58,6 +59,17 @@ runs:
         PASSWORD=E2ETestPassword123!
         LOG_LEVEL=INFO
         EOF
+        
+        # Also export as environment variables for GitHub Actions
+        echo "WEB_URL=https://localhost" >> $GITHUB_ENV
+        echo "COMPANY_NAME=E2ETestCompany" >> $GITHUB_ENV
+        echo "LOGIN=e2e@test.com" >> $GITHUB_ENV
+        echo "PASSWORD=E2ETestPassword123!" >> $GITHUB_ENV
+        echo "LOG_LEVEL=INFO" >> $GITHUB_ENV
+        
+        echo "📁 Environment file created at: $(pwd)/.env.test"
+        echo "📋 Content:"
+        cat .env.test
         
         echo "✅ Environment configured with:"
         echo "  - URL: https://localhost"
@@ -87,6 +99,13 @@ runs:
         source venv/bin/activate
         
         echo "🚀 Checking if application needs initialization..."
+        
+        # Debug environment variables
+        echo "🔍 Debug: Environment variables loaded:"
+        echo "  WEB_URL=$WEB_URL"
+        echo "  COMPANY_NAME=$COMPANY_NAME" 
+        echo "  LOGIN=$LOGIN"
+        echo "  LOG_LEVEL=$LOG_LEVEL"
         
         # Run a quick initialization check and auto-initialize if needed
         python -c "

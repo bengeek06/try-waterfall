@@ -8,8 +8,6 @@
 #   docker compose --profile storage up                  # Avec MinIO
 #   docker compose --profile cache --profile storage up  # Complet
 
-version: '3.8'
-
 services:
   # ===========================================================================
   # PostgreSQL Database (Core - toujours actif)
@@ -80,7 +78,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD", "curl", "-f", "https://localhost/api/auth/health"]
       interval: 30s
       timeout: 10s
       retries: 3

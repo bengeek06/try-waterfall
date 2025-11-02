@@ -174,6 +174,13 @@ max_requests_jitter = 100
 preload_app = True
 pythonpath = "/app/SERVICE_DIR_PLACEHOLDER"
 chdir = "/app/SERVICE_DIR_PLACEHOLDER"
+
+# Logging configuration for real-time visibility
+accesslog = "-"
+access_log_format = "%(h)s %(l)s %(u)s %(t)s '%(r)s' %(s)s %(b)s '%(f)s' '%(a)s'"
+errorlog = "-"
+loglevel = "info"
+capture_output = True
 GUNICORN_EOF
     
     sed -i "s/PORT_PLACEHOLDER/$port/g" "/app/$service_dir/gunicorn.conf.py"

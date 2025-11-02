@@ -48,7 +48,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Extract metadata (GHCR only)
-      if: github.event_name != 'release' || secrets.DOCKERHUB_USERNAME == ''
+      if: ${{ github.event_name != 'release' || secrets.DOCKERHUB_USERNAME == '' }}
       id: meta-ghcr
       uses: docker/metadata-action@v5
       with:
@@ -64,7 +64,7 @@ jobs:
           type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Extract metadata (GHCR + Docker Hub)
-      if: github.event_name == 'release' && secrets.DOCKERHUB_USERNAME != ''
+      if: ${{ github.event_name == 'release' && secrets.DOCKERHUB_USERNAME != '' }}
       id: meta-both
       uses: docker/metadata-action@v5
       with:

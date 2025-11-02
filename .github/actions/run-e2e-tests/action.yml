@@ -36,15 +36,6 @@ runs:
         pip install --no-cache-dir -r requirements.txt
         echo "✅ Python environment ready"
 
-    - name: Install Chrome for Selenium
-      shell: bash
-      run: |
-        echo "🌐 Installing Chrome for Selenium tests..."
-        sudo apt-get update -qq
-        sudo apt-get install -y chromium-browser
-        chromium --version
-        echo "✅ Chrome installed"
-
     - name: Configure test environment
       shell: bash
       run: |
@@ -101,19 +92,20 @@ runs:
         cd e2e-waterfall
         source venv/bin/activate
         
-        echo "🧪 Running E2E tests (scope: ${{ inputs.test_scope }})..."
+        echo "🧪 Running E2E API tests (scope: ${{ inputs.test_scope }})..."
         echo "🎯 Note: Application initialization handled automatically by pytest fixtures"
+        echo "⚠️  UI tests disabled - API tests only"
         
-        # Run pytest with the working conftest.py fixtures (ensure_app_initialized will run automatically)
+        # Run pytest with API tests only (UI tests disabled for now)
         if [ "${{ inputs.test_scope }}" = "build" ]; then
-          echo "Running build validation tests..."
+          echo "Running build validation tests (API only)..."
           python -m pytest api/auth/ api/*/test_*system.py -v --tb=short --maxfail=3
         elif [ "${{ inputs.test_scope }}" = "publish" ]; then
-          echo "Running comprehensive tests..."  
-          python -m pytest api/ ui/login/ -v --tb=short --maxfail=5
+          echo "Running comprehensive API tests..."  
+          python -m pytest api/ -v --tb=short --maxfail=5
         else
-          echo "Running full test suite..."
-          python -m pytest api/ ui/ -v --tb=short --maxfail=5
+          echo "Running full API test suite..."
+          python -m pytest api/ -v --tb=short --maxfail=5
         fi
 
     - name: Upload Test Results

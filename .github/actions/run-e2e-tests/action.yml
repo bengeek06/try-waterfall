@@ -182,6 +182,13 @@ runs:
                     return False
                 
                 print('✅ Application initialized successfully')
+                
+                # Wait for internal services synchronization in monolithic container
+                print('⏳ Waiting for internal services to synchronize (15s)...')
+                import time
+                time.sleep(15)
+                print('✅ Services should be synchronized')
+                
                 return True
                 
             except Exception as e:
@@ -196,8 +203,43 @@ runs:
                 print('❌ Failed to initialize application')
                 exit(1)
         
+        # Check all services status after initialization
+        print('\\n🔍 Checking all services after initialization:')
+        services = ['auth', 'identity', 'guardian']
+        for service in services:
+            try:
+                init_url = f'{web_url}/api/{service}/init-db'
+                init_response = requests.get(init_url, verify=False, timeout=5)
+                if init_response.status_code == 200:
+                    init_data = init_response.json()
+                    initialized = init_data.get('initialized', False)
+                    print(f'{service} initialized: {initialized}')
+                else:
+                    print(f'{service} init-db endpoint: {init_response.status_code}')
+            except Exception as e:
+                print(f'{service} check error: {e}')
+        
+        # Test Identity service check_access directly (what Auth service calls internally)
+        print('\\n� Testing Identity service check_access directly:')
+        try:
+            check_access_response = requests.post(
+                f'{web_url}/api/identity/check_access',
+                json={'email': login, 'password': password},
+                headers={'Content-Type': 'application/json'},
+                verify=False,
+                timeout=10
+            )
+            print(f'Identity check_access result: {check_access_response.status_code}')
+            if check_access_response.status_code == 200:
+                check_data = check_access_response.json()
+                print(f'✅ Identity check_access successful: {check_data}')
+            else:
+                print(f'❌ Identity check_access failed: {check_access_response.text}')
+        except Exception as e:
+            print(f'Identity check_access error: {e}')
+
         # Test login after initialization
-        print('🔐 Testing login...')
+        print('\\n� Testing Auth service login (which calls Identity check_access):')
         try:
             login_response = requests.post(
                 f'{web_url}/api/auth/login',
@@ -206,13 +248,16 @@ runs:
                 verify=False,
                 timeout=10
             )
-            print(f'Login test result: {login_response.status_code}')
+            print(f'Auth login result: {login_response.status_code}')
             if login_response.status_code == 200:
-                print('✅ Login successful!')
+                print('✅ Auth login successful!')
+                login_data = login_response.json()
+                print(f'Login response: {login_data}')
             else:
-                print(f'❌ Login failed: {login_response.text}')
+                print(f'❌ Auth login failed: {login_response.text}')
+                    
         except Exception as e:
-            print(f'Login test error: {e}')
+            print(f'Auth login error: {e}')
         "
 
     - name: Run E2E Tests

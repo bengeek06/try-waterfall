@@ -112,30 +112,93 @@ runs:
         echo "🔍 Debug: .env.test file content:"
         cat .env.test
         
-        echo "🔍 Debug: Testing Python environment loading:"
+        echo "🔍 Debug: Testing Python environment loading and initializing application:"
         source venv/bin/activate
         python -c "
         import os
         import requests
         from dotenv import load_dotenv
         load_dotenv('.env.test')
+        
         web_url = os.getenv('WEB_URL', 'https://localhost')
+        company_name = os.getenv('COMPANY_NAME', 'E2ETestCompany')
         login = os.getenv('LOGIN', 'e2e@test.com')
         password = os.getenv('PASSWORD', 'E2ETestPassword123!')
+        
         print(f'Python WEB_URL: {web_url}')
+        print(f'Python COMPANY_NAME: {company_name}')
         print(f'Python LOGIN: {login}')
         print(f'Python PASSWORD: {password}')
         
-        # Test if app is initialized
-        try:
-            response = requests.get(f'{web_url}/api/identity/init-db', verify=False, timeout=5)
-            if response.status_code == 200:
-                data = response.json()
-                print(f'App initialized: {data.get(\"initialized\", False)}')
-            else:
-                print(f'Init check failed: {response.status_code}')
+        def check_initialized():
+            try:
+                response = requests.get(f'{web_url}/api/identity/init-db', verify=False, timeout=5)
+                if response.status_code == 200:
+                    return response.json().get('initialized', False)
+                return False
+            except:
+                return False
+        
+        def initialize_app():
+            print('🚀 Initializing application...')
+            try:
+                # Step 1: Initialize Identity service
+                print('Step 1: Initializing Identity service...')
+                identity_payload = {
+                    'company': {'name': company_name},
+                    'user': {'email': login, 'password': password}
+                }
+                identity_response = requests.post(
+                    f'{web_url}/api/identity/init-db',
+                    json=identity_payload,
+                    headers={'Content-Type': 'application/json'},
+                    verify=False,
+                    timeout=10
+                )
+                if identity_response.status_code != 201:
+                    print(f'Identity init failed: {identity_response.status_code} - {identity_response.text}')
+                    return False
                 
-            # Test login with these credentials
+                identity_data = identity_response.json()
+                company_id = identity_data.get('company', {}).get('id')
+                user_id = identity_data.get('user', {}).get('id')
+                print(f'Identity initialized: Company ID: {company_id}, User ID: {user_id}')
+                
+                # Step 2: Initialize Guardian service
+                print('Step 2: Initializing Guardian service...')
+                guardian_payload = {
+                    'company': {'name': company_name, 'company_id': company_id},
+                    'user': {'email': login, 'password': password, 'user_id': user_id}
+                }
+                guardian_response = requests.post(
+                    f'{web_url}/api/guardian/init-db',
+                    json=guardian_payload,
+                    headers={'Content-Type': 'application/json'},
+                    verify=False,
+                    timeout=10
+                )
+                if guardian_response.status_code != 201:
+                    print(f'Guardian init failed: {guardian_response.status_code} - {guardian_response.text}')
+                    return False
+                
+                print('✅ Application initialized successfully')
+                return True
+                
+            except Exception as e:
+                print(f'Initialization error: {e}')
+                return False
+        
+        # Check if already initialized
+        if check_initialized():
+            print('✅ Application already initialized')
+        else:
+            if not initialize_app():
+                print('❌ Failed to initialize application')
+                exit(1)
+        
+        # Test login after initialization
+        print('🔐 Testing login...')
+        try:
             login_response = requests.post(
                 f'{web_url}/api/auth/login',
                 json={'email': login, 'password': password},
@@ -144,10 +207,12 @@ runs:
                 timeout=10
             )
             print(f'Login test result: {login_response.status_code}')
-            if login_response.status_code != 200:
-                print(f'Login error: {login_response.text}')
+            if login_response.status_code == 200:
+                print('✅ Login successful!')
+            else:
+                print(f'❌ Login failed: {login_response.text}')
         except Exception as e:
-            print(f'Debug test error: {e}')
+            print(f'Login test error: {e}')
         "
 
     - name: Run E2E Tests

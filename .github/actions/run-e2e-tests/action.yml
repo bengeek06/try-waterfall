@@ -21,10 +21,10 @@ runs:
     - name: Clone E2E Test Repository
       shell: bash
       run: |
-        echo "🧪 Cloning E2E test repository..."
-        git clone https://github.com/bengeek06/e2e-waterfall.git e2e-waterfall
+        echo "🧪 Cloning E2E test repository (branch: web_staging)..."
+        git clone --branch web_staging https://github.com/bengeek06/e2e-waterfall.git e2e-waterfall
         cd e2e-waterfall
-        echo "✅ E2E repository cloned"
+        echo "✅ E2E repository cloned from web_staging branch"
 
     - name: Setup Python environment
       shell: bash

@@ -94,6 +94,13 @@ jobs:
         
         echo "All health checks passed!"
 
+    - name: Run E2E Tests
+      uses: ./.github/actions/run-e2e-tests
+      with:
+        test_scope: 'build'
+        web_url: 'https://localhost'
+        timeout: '180'
+
     - name: Check logs on failure
       if: failure()
       run: |

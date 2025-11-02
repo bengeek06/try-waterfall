@@ -1,0 +1,94 @@
+name: 'Run E2E Tests'
+description: 'Execute end-to-end tests against running Waterfall application'
+
+inputs:
+  test_scope:
+    description: 'Scope of tests to run (build|publish|full)'
+    required: false
+    default: 'build'
+  web_url:
+    description: 'URL of the running application'
+    required: false
+    default: 'https://localhost'
+  timeout:
+    description: 'Timeout for tests in seconds'
+    required: false
+    default: '300'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Clone E2E Test Repository
+      shell: bash
+      run: |
+        echo "🧪 Cloning E2E test repository..."
+        git clone https://github.com/bengeek06/e2e-waterfall.git e2e-tests
+        cd e2e-tests
+        echo "✅ E2E repository cloned"
+
+    - name: Setup Python Environment
+      shell: bash
+      run: |
+        cd e2e-tests
+        echo "🐍 Setting up Python environment..."
+        python -m venv venv
+        source venv/bin/activate
+        pip install --no-cache-dir -r requirements.txt
+        echo "✅ Python environment ready"
+
+    - name: Install Chrome for Selenium
+      shell: bash
+      run: |
+        echo "🌐 Installing Chrome for Selenium tests..."
+        sudo apt-get update -qq
+        sudo apt-get install -y chromium-browser
+        chromium --version
+        echo "✅ Chrome installed"
+
+    - name: Configure Test Environment
+      shell: bash
+      run: |
+        cd e2e-tests
+        echo "⚙️ Configuring test environment..."
+        cat > .env.test << EOF
+        WEB_URL=${{ inputs.web_url }}
+        COMPANY_NAME=E2ETestCompany
+        LOGIN=e2e@test.com
+        PASSWORD=E2ETestPassword123!
+        LOG_LEVEL=INFO
+        EOF
+        echo "✅ Environment configured"
+
+    - name: Run E2E Tests
+      shell: bash
+      run: |
+        cd e2e-tests
+        source venv/bin/activate
+        
+        echo "🧪 Running E2E tests (scope: ${{ inputs.test_scope }})..."
+        
+        if [ "${{ inputs.test_scope }}" = "build" ]; then
+          # Tests rapides pour validation de build
+          echo "Running build validation tests..."
+          timeout ${{ inputs.timeout }} pytest api/auth/ api/*/test_*system.py -v --tb=short --maxfail=3
+        elif [ "${{ inputs.test_scope }}" = "publish" ]; then
+          # Tests complets pour validation de publication
+          echo "Running comprehensive tests for published image..."
+          timeout ${{ inputs.timeout }} pytest api/ ui/test_app_init.py ui/login/test_login.py -v --tb=short --maxfail=5
+        else
+          # Tests complets
+          echo "Running full test suite..."
+          timeout ${{ inputs.timeout }} pytest api/ ui/ -v --tb=short --maxfail=5
+        fi
+        
+        echo "✅ E2E tests completed successfully!"
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-test-results-${{ inputs.test_scope }}
+        path: |
+          e2e-tests/logs/
+          e2e-tests/screenshots/
+        retention-days: 7

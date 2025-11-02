@@ -132,5 +132,14 @@ jobs:
         
         echo "Published image test passed!"
         
-        # Cleanup
+    - name: Run E2E Tests on Published Image
+      uses: ./.github/actions/run-e2e-tests
+      with:
+        test_scope: 'publish'
+        web_url: 'https://localhost'
+        timeout: '300'
+    
+    - name: Cleanup
+      if: always()
+      run: |
         docker compose down -v

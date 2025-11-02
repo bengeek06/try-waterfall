@@ -1,0 +1,54 @@
+# Configuration pour les tests E2E en CI/CD
+# Ce fichier définit les paramètres spécifiques pour l'exécution des tests end-to-end
+
+# Configuration des tests
+test_config:
+  # Timeout pour les tests (en secondes)
+  timeout: 300
+  
+  # Nombre maximum d'échecs avant arrêt
+  max_failures: 5
+  
+  # Tests à exécuter par environnement
+  build_tests:
+    - "api/auth/"
+    - "api/identity/test_api_system.py"
+    - "api/guardian/test_api_system.py"
+  
+  publish_tests:
+    - "api/"
+    - "ui/test_app_init.py"
+    - "ui/login/test_login.py"
+
+# Configuration de l'environnement de test
+test_environment:
+  web_url: "https://localhost"
+  company_name: "E2ETestCompany"
+  login: "e2e@test.com"
+  password: "E2ETestPassword123!"
+  log_level: "INFO"
+
+# Configuration Chrome pour Selenium
+chrome_config:
+  headless: true
+  no_sandbox: true
+  disable_dev_shm_usage: true
+  disable_gpu: true
+  window_size: "1920,1080"
+
+# Retry configuration pour tests flaky
+retry_config:
+  max_retries: 3
+  retry_delay: 5
+
+# Reporting
+reporting:
+  junit_xml: true
+  html_report: false  # Désactivé en CI/CD pour la performance
+  screenshots_on_failure: true
+  
+# Performance
+performance:
+  parallel_tests: false  # Désactivé car les tests partagent l'état de l'app
+  test_isolation: true
+  cleanup_after_tests: true

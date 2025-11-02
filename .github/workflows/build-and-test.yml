@@ -70,7 +70,11 @@ jobs:
         
         # Wait for services to be healthy
         echo "Waiting for services to be ready..."
-        timeout 120 bash -c 'until docker compose ps | grep -q "healthy"; do sleep 5; done'
+        timeout 180 bash -c 'until docker compose ps | grep "waterfall-app" | grep -q "healthy"; do echo "Waiting for waterfall-app to be healthy..."; sleep 10; done'
+        
+        # Extra wait to ensure all services are fully stabilized
+        echo "Services are healthy, waiting additional 30s for full startup..."
+        sleep 30
         
         # Check service status
         docker compose ps

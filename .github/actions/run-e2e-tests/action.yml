@@ -112,27 +112,54 @@ runs:
         import requests
         import json
         import sys
+        import os
         
         try:
+            # Get credentials from environment
+            web_url = os.getenv('WEB_URL', 'https://localhost')
+            company_name = os.getenv('COMPANY_NAME', 'E2ETestCompany')
+            login_email = os.getenv('LOGIN', 'e2e@test.com')
+            login_password = os.getenv('PASSWORD', 'E2ETestPassword123!')
+            
+            print(f'🔧 Environment: WEB_URL={web_url}')
+            print(f'🔧 Using credentials: {login_email} / {login_password}')
+            
             # Check if app is already initialized
-            response = requests.get('https://localhost/api/identity/init-db', verify=False, timeout=10)
+            response = requests.get(f'{web_url}/api/identity/init-db', verify=False, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 if data.get('initialized', False):
-                    print('✅ Application already initialized')
-                    sys.exit(0)
+                    print('ℹ️ Application already initialized, checking login...')
+                    
+                    # Test if we can login with current credentials
+                    login_test = requests.post(
+                        f'{web_url}/api/auth/login',
+                        json={'email': login_email, 'password': login_password},
+                        headers={'Content-Type': 'application/json'},
+                        verify=False,
+                        timeout=10
+                    )
+                    
+                    if login_test.status_code == 200:
+                        print('✅ Application initialized with correct credentials')
+                        sys.exit(0)
+                    else:
+                        print(f'⚠️ Login test failed ({login_test.status_code}), re-initializing...')
+                        # Continue to re-initialize
             
             print('🔧 Application needs initialization...')
             
             # Initialize Identity service
             identity_payload = {
-                'company': {'name': 'E2ETestCompany'},
-                'user': {'email': 'e2e@test.com', 'password': 'E2ETestPassword123!'}
+                'company': {'name': company_name},
+                'user': {'email': login_email, 'password': login_password}
             }
+            
+            print(f'🔧 Payload: {identity_payload}')
             
             print('📡 Initializing Identity service...')
             response = requests.post(
-                'https://localhost/api/identity/init-db',
+                f'{web_url}/api/identity/init-db',
                 json=identity_payload,
                 headers={'Content-Type': 'application/json'},
                 verify=False,
@@ -150,13 +177,13 @@ runs:
             
             # Initialize Guardian service  
             guardian_payload = {
-                'company': {'name': 'E2ETestCompany', 'company_id': company_id},
-                'user': {'email': 'e2e@test.com', 'user_id': identity_data.get('user', {}).get('id')}
+                'company': {'name': company_name, 'company_id': company_id},
+                'user': {'email': login_email, 'user_id': identity_data.get('user', {}).get('id')}
             }
             
             print('🛡️ Initializing Guardian service...')
             response = requests.post(
-                'https://localhost/api/guardian/init-db',
+                f'{web_url}/api/guardian/init-db',
                 json=guardian_payload,
                 headers={'Content-Type': 'application/json'},
                 verify=False,

@@ -120,9 +120,11 @@ jobs:
         # Wait for healthy
         timeout 120 bash -c 'until docker compose ps | grep -q "healthy"; do sleep 5; done'
         
-        # Test endpoints
-        curl -f http://localhost:8080/health
-        curl -f -k https://localhost:8443/health
+        # Test endpoints for each service
+        curl -f -k https://localhost/api/auth/health
+        curl -f -k https://localhost/api/identity/health
+        curl -f -k https://localhost/api/guardian/health
+        curl -f -k https://localhost/
         
         echo "Published image test passed!"
         

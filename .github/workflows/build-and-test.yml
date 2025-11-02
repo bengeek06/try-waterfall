@@ -75,12 +75,18 @@ jobs:
         # Check service status
         docker compose ps
         
-        # Test health endpoints
-        echo "Testing HTTP endpoint..."
-        curl -f http://localhost:8080/health || exit 1
+        # Test health endpoints for each service
+        echo "Testing Auth Service health..."
+        curl -f -k https://localhost/api/auth/health || exit 1
         
-        echo "Testing HTTPS endpoint (insecure for self-signed cert)..."
-        curl -f -k https://localhost:8443/health || exit 1
+        echo "Testing Identity Service health..."
+        curl -f -k https://localhost/api/identity/health || exit 1
+        
+        echo "Testing Guardian Service health..."
+        curl -f -k https://localhost/api/guardian/health || exit 1
+        
+        echo "Testing Web Service..."
+        curl -f -k https://localhost/ || exit 1
         
         echo "All health checks passed!"
 

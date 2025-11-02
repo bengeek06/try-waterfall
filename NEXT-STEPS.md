@@ -136,6 +136,7 @@ docker compose up -d
 - Submodules auto-populated
 - Build works from fresh clone
 - Services start correctly
+- ✅ E2E tests configuration fixed (proper URLs and credentials)
 
 ## 🎯 Phase 8: Create First Release
 
@@ -190,6 +191,7 @@ Update READMEs in both repos:
 - ✅ First release published
 - ✅ Main repo cleaned up
 - ✅ Documentation updated
+- ✅ E2E tests properly configured and running
 
 ## 🐛 Known Issues to Test
 
@@ -198,6 +200,18 @@ Update READMEs in both repos:
 3. SSL certificate generation on first run
 4. Database migrations on first start
 5. Port conflicts (8080/8443)
+6. ✅ **RESOLVED**: E2E test authentication failures - Fixed configuration and credentials
+
+## 🔧 E2E Test Configuration Fix
+
+**Issue**: E2E tests were failing with 401 authentication errors due to incorrect URL configuration and missing test user.
+
+**Resolution**: 
+- Updated GitHub Actions to use correct HTTPS URL (`https://localhost`)
+- Configured proper test credentials (`e2e@test.com` / `E2ETestPassword123!`)
+- Added automatic application initialization before tests
+- Implemented health endpoint waiting to ensure app is ready
+- Created `.env.test` configuration with proper environment variables
 
 ---
 

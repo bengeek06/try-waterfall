@@ -46,6 +46,7 @@ runs:
         echo "✅ Chrome installed"
 
     - name: Configure test environment
+      shell: bash
       run: |
         echo "⚙️ Configuring test environment..."
         

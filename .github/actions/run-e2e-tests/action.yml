@@ -74,14 +74,10 @@ runs:
         echo "PASSWORD=E2ETestPassword123!" >> $GITHUB_ENV
         echo "LOG_LEVEL=INFO" >> $GITHUB_ENV
         
-        echo "📁 Environment file created at: $(pwd)/.env.test"
-        echo "📋 Content:"
-        cat .env.test
-        
-        echo "✅ Environment configured with:"
-        echo "  - URL: https://localhost"
-        echo "  - Company: E2ETestCompany" 
-        echo "  - Login: e2e@test.com"
+        echo "✅ Environment configured:"
+        echo "  - Application URL: https://localhost"
+        echo "  - Test Company: E2ETestCompany" 
+        echo "  - Test User: e2e@test.com"
         echo "  - Log Level: INFO"
 
     - name: Wait for application initialization
@@ -99,167 +95,6 @@ runs:
         sleep 30
         echo "✅ Application should be fully ready"
 
-    - name: Debug environment
-      shell: bash
-      run: |
-        echo "🔍 Debug: Environment variables:"
-        echo "  WEB_URL=$WEB_URL"
-        echo "  COMPANY_NAME=$COMPANY_NAME" 
-        echo "  LOGIN=$LOGIN"
-        echo "  LOG_LEVEL=$LOG_LEVEL"
-        
-        cd e2e-waterfall
-        echo "🔍 Debug: .env.test file content:"
-        cat .env.test
-        
-        echo "🔍 Debug: Testing Python environment loading and initializing application:"
-        source venv/bin/activate
-        python -c "
-        import os
-        import requests
-        from dotenv import load_dotenv
-        load_dotenv('.env.test')
-        
-        web_url = os.getenv('WEB_URL', 'https://localhost')
-        company_name = os.getenv('COMPANY_NAME', 'E2ETestCompany')
-        login = os.getenv('LOGIN', 'e2e@test.com')
-        password = os.getenv('PASSWORD', 'E2ETestPassword123!')
-        
-        print(f'Python WEB_URL: {web_url}')
-        print(f'Python COMPANY_NAME: {company_name}')
-        print(f'Python LOGIN: {login}')
-        print(f'Python PASSWORD: {password}')
-        
-        def check_initialized():
-            try:
-                response = requests.get(f'{web_url}/api/identity/init-db', verify=False, timeout=5)
-                if response.status_code == 200:
-                    return response.json().get('initialized', False)
-                return False
-            except:
-                return False
-        
-        def initialize_app():
-            print('🚀 Initializing application...')
-            try:
-                # Step 1: Initialize Identity service
-                print('Step 1: Initializing Identity service...')
-                identity_payload = {
-                    'company': {'name': company_name},
-                    'user': {'email': login, 'password': password}
-                }
-                identity_response = requests.post(
-                    f'{web_url}/api/identity/init-db',
-                    json=identity_payload,
-                    headers={'Content-Type': 'application/json'},
-                    verify=False,
-                    timeout=10
-                )
-                if identity_response.status_code != 201:
-                    print(f'Identity init failed: {identity_response.status_code} - {identity_response.text}')
-                    return False
-                
-                identity_data = identity_response.json()
-                company_id = identity_data.get('company', {}).get('id')
-                user_id = identity_data.get('user', {}).get('id')
-                print(f'Identity initialized: Company ID: {company_id}, User ID: {user_id}')
-                
-                # Step 2: Initialize Guardian service
-                print('Step 2: Initializing Guardian service...')
-                guardian_payload = {
-                    'company': {'name': company_name, 'company_id': company_id},
-                    'user': {'email': login, 'password': password, 'user_id': user_id}
-                }
-                guardian_response = requests.post(
-                    f'{web_url}/api/guardian/init-db',
-                    json=guardian_payload,
-                    headers={'Content-Type': 'application/json'},
-                    verify=False,
-                    timeout=10
-                )
-                if guardian_response.status_code != 201:
-                    print(f'Guardian init failed: {guardian_response.status_code} - {guardian_response.text}')
-                    return False
-                
-                print('✅ Application initialized successfully')
-                
-                # Wait for internal services synchronization in monolithic container
-                print('⏳ Waiting for internal services to synchronize (15s)...')
-                import time
-                time.sleep(15)
-                print('✅ Services should be synchronized')
-                
-                return True
-                
-            except Exception as e:
-                print(f'Initialization error: {e}')
-                return False
-        
-        # Check if already initialized
-        if check_initialized():
-            print('✅ Application already initialized')
-        else:
-            if not initialize_app():
-                print('❌ Failed to initialize application')
-                exit(1)
-        
-        # Check all services status after initialization
-        print('\\n🔍 Checking all services after initialization:')
-        services = ['auth', 'identity', 'guardian']
-        for service in services:
-            try:
-                init_url = f'{web_url}/api/{service}/init-db'
-                init_response = requests.get(init_url, verify=False, timeout=5)
-                if init_response.status_code == 200:
-                    init_data = init_response.json()
-                    initialized = init_data.get('initialized', False)
-                    print(f'{service} initialized: {initialized}')
-                else:
-                    print(f'{service} init-db endpoint: {init_response.status_code}')
-            except Exception as e:
-                print(f'{service} check error: {e}')
-        
-        # Test Identity service check_access directly (what Auth service calls internally)
-        print('\\n� Testing Identity service check_access directly:')
-        try:
-            check_access_response = requests.post(
-                f'{web_url}/api/identity/check_access',
-                json={'email': login, 'password': password},
-                headers={'Content-Type': 'application/json'},
-                verify=False,
-                timeout=10
-            )
-            print(f'Identity check_access result: {check_access_response.status_code}')
-            if check_access_response.status_code == 200:
-                check_data = check_access_response.json()
-                print(f'✅ Identity check_access successful: {check_data}')
-            else:
-                print(f'❌ Identity check_access failed: {check_access_response.text}')
-        except Exception as e:
-            print(f'Identity check_access error: {e}')
-
-        # Test login after initialization
-        print('\\n� Testing Auth service login (which calls Identity check_access):')
-        try:
-            login_response = requests.post(
-                f'{web_url}/api/auth/login',
-                json={'email': login, 'password': password},
-                headers={'Content-Type': 'application/json'},
-                verify=False,
-                timeout=10
-            )
-            print(f'Auth login result: {login_response.status_code}')
-            if login_response.status_code == 200:
-                print('✅ Auth login successful!')
-                login_data = login_response.json()
-                print(f'Login response: {login_data}')
-            else:
-                print(f'❌ Auth login failed: {login_response.text}')
-                    
-        except Exception as e:
-            print(f'Auth login error: {e}')
-        "
-
     - name: Run E2E Tests
       shell: bash
       run: |
@@ -267,8 +102,9 @@ runs:
         source venv/bin/activate
         
         echo "🧪 Running E2E tests (scope: ${{ inputs.test_scope }})..."
+        echo "🎯 Note: Application initialization handled automatically by pytest fixtures"
         
-        # Simple pytest execution like in the working script
+        # Run pytest with the working conftest.py fixtures (ensure_app_initialized will run automatically)
         if [ "${{ inputs.test_scope }}" = "build" ]; then
           echo "Running build validation tests..."
           python -m pytest api/auth/ api/*/test_*system.py -v --tb=short --maxfail=3
